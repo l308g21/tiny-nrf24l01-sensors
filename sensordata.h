@@ -1,6 +1,5 @@
 #include <stdbool.h>
 
-// how about that:
 typedef struct {
 	uint8_t type;
 	uint8_t index;
