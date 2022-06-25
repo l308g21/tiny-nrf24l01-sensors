@@ -2,7 +2,7 @@
 #include <avr/interrupt.h>
 #include <avr/wdt.h>
 #include <avr/sleep.h>
-#include <nrf24l01.h>  // https://github.com/l308g21/tiny-nrf24l01
+#include <tiny-nrf24l01.h>  // https://github.com/l308g21/tiny-nrf24l01
 #include <nrf24l01-mnemonics.h>
 #include <string.h>
 #include <stdbool.h>
@@ -93,6 +93,7 @@ void start_timer(){
     PRR  &= ~(1 << PRTIM1);
     //reset timer;
     TCNT1 = 0;
+    TCNT0 = 0;
     //set prescaler to clock/1
     TCCR1 =  (1 << CS10);
     //enable compare match interrupt
