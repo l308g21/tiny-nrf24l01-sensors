@@ -113,18 +113,19 @@ uint16_t get_sonic_range( uint8_t trig, uint8_t echo ){
     PORTB &= ~( (1 << trig) | (1 << echo) );
     TCNT0  = 0;
 
-    start_timer();
     // pulse trigger >= 10us;
     PORTB |=  (1 << trig);
     _delay_us(10);
+    start_timer();
     PORTB &= ~(1 << trig);
 
     while ( !(PINB & (1 << echo)) ){}
     TCNT1 = 0;
-    while ( PINB & (1 << echo) ){}
+    while ( PINB & (1 << echo) && (TCNT0 < 46) ){}
     stop_timer();
 
     uint16_t range = (TCNT0 << 8) | TCNT1;
+    if (TCNT0 >= 46) range = ~range | (1 << 15);    
     return range;
 }
 
