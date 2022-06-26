@@ -7,7 +7,7 @@
 #include <string.h>
 #include <stdbool.h>
 #include <util/delay.h>
-
+#include <math.h>
 
 #define SENSOR_TYPE 1
 //#define BATTERY_POWERED
@@ -17,17 +17,24 @@
 #define TRIG PB3
 #define ECHO PB4 
 
-inline void     start_timer();
-inline void     stop_timer ();
-uint16_t get_sonic_range    ( uint8_t trig, uint8_t echo);
-void     extend_message     ( nRF24L01Message* message, void* data, uint8_t data_length);
-void     compose_message( nRF24L01Message* message, sensor_data* Sdata);
-void     get_checksum( sensor_data* Sdata );
+
+
+inline void     start_timer ();
+inline void     stop_timer  ();
+
+uint16_t get_filtered_range  ();
+uint16_t get_sonic_range    ( uint8_t trig, uint8_t echo );
+
+void     get_checksum       ( sensor_data* Sdata );
+void     extend_message     ( nRF24L01Message* message, void* data, uint8_t data_length );
+void     compose_message    ( nRF24L01Message* message, sensor_data* Sdata );
+
 
 
 uint8_t wakeup_counter = 0;
 uint64_t address = 0x6262626262;
 sensor_data Sdata;
+
 
 
 int main(void){
@@ -47,9 +54,9 @@ int main(void){
         sleep_mode();
         
         // take measurement about every 10min (@3.3V 25s * 24 = 10min)
-        if ( wakeup_counter == 23){
+        if ( wakeup_counter == 65){
             // gather data
-            Sdata.sonic_range = get_sonic_range(TRIG, ECHO);
+            Sdata.sonic_range = get_filtered_range();
             get_checksum( &Sdata );
 
             // compose message
@@ -126,8 +133,35 @@ uint16_t get_sonic_range( uint8_t trig, uint8_t echo ){
     stop_timer();
 
     uint16_t range = (TCNT0 << 8) | TCNT1;
-    if (TCNT0 >= 46) range = ~range | (1 << 15);    
+    // if (TCNT0 >= 46) range = ~range | (1 << 15);    
     return range;
+}
+
+
+
+uint16_t get_filtered_range()
+{
+    // get to succeding readings that do not deviate by more than .01
+    // return their average
+    
+    uint16_t       reading, reading1, average;
+    uint8_t        stop_counter    = 0;
+    float          deviation       = 1;
+    float const    deviation_goal  = .01;
+
+    reading = get_sonic_range( TRIG, ECHO );
+    while ( deviation > deviation_goal && stop_counter < 10 )
+    {
+        reading1 = reading;
+        _delay_ms(180);
+        reading = get_sonic_range( TRIG, ECHO );
+        deviation = fabs(reading / reading1 - 1);
+        stop_counter++;
+    }
+
+    average  = reading + reading1;
+    average /= 2;
+    return average;
 }
 
 
